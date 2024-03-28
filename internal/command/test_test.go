@@ -1923,8 +1923,8 @@ calculate lock file checksums locally for the following providers:
   - hashicorp/test
 
 The current .terraform.lock.hcl file only includes checksums for linux_amd64,
-so Terraform running on another platform will fail to install
-these providers.
+so Terraform running on another platform will fail to install these
+providers.
 
 To calculate additional checksums for another platform, run:
   terraform providers lock -platform=linux_amd64
@@ -2031,8 +2031,8 @@ calculate lock file checksums locally for the following providers:
   - hashicorp/test
 
 The current .terraform.lock.hcl file only includes checksums for linux_amd64,
-so Terraform running on another platform will fail to install
-these providers.
+so Terraform running on another platform will fail to install these
+providers.
 
 To calculate additional checksums for another platform, run:
   terraform providers lock -platform=linux_amd64
@@ -2106,8 +2106,8 @@ calculate lock file checksums locally for the following providers:
   - hashicorp/test
 
 The current .terraform.lock.hcl file only includes checksums for linux_amd64,
-so Terraform running on another platform will fail to install
-these providers.
+so Terraform running on another platform will fail to install these
+providers.
 
 To calculate additional checksums for another platform, run:
   terraform providers lock -platform=linux_amd64
