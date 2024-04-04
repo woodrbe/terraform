@@ -614,6 +614,10 @@ func (i *ModuleInstaller) installRegistryModule(ctx context.Context, req *config
 					})
 				}
 				// mdTODO: do I need to do something with the submodules?
+				// how to find deprecations for submodules
+				for _, submodule := range version.Submodules {
+
+				}
 			}
 
 		}
