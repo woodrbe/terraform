@@ -5,6 +5,7 @@ package initwd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -61,6 +62,9 @@ func NewModuleInstaller(modsDir string, loader *configload.Loader, reg *registry
 // mdTODO: remove this later, only for iteration while the api hasn't been updated.
 // Example function to inject mock deprecations into ModuleVersions
 func injectMockDeprecations(modules *response.ModuleVersions) {
+	jsonBytes, _ := json.MarshalIndent(modules, "", "  ")
+	log.Printf("[DEBUG] submodule!!!: %s ", string(jsonBytes))
+	log.Printf("[DEBUG] __________________________________________________")
 	for _, module := range modules.Modules {
 		for _, version := range module.Versions {
 			// Inject a mock deprecation into each version
@@ -601,26 +605,7 @@ func (i *ModuleInstaller) installRegistryModule(ctx context.Context, req *config
 				latestMatch = v
 			}
 		}
-		log.Print("[DEBUG] where modules are actually installed")
-		// mdTODO: if there are deprecations for modules, add the warnings here
-		for _, module := range resp.Modules {
-			for _, version := range module.Versions {
-				if version.Deprecation.Deprecated {
-					diags = diags.Append(&hcl.Diagnostic{
-						Severity: hcl.DiagWarning,
-						Summary:  version.Deprecation.Message,
-						Detail:   version.Deprecation.ExternalLink,
-						Subject:  req.CallRange.Ptr(),
-					})
-				}
-				// mdTODO: do I need to do something with the submodules?
-				// how to find deprecations for submodules
-				for _, submodule := range version.Submodules {
 
-				}
-			}
-
-		}
 	}
 
 	if latestVersion == nil {
@@ -641,6 +626,64 @@ func (i *ModuleInstaller) installRegistryModule(ctx context.Context, req *config
 			Subject:  req.CallRange.Ptr(),
 		})
 		return nil, nil, diags
+	}
+
+	// mdTODO: if there are deprecations for modules, add the warnings here
+	// move this to separate function, will need to recurse down for submodules and submodule submodules
+	// some sort of caching mechanism would be nice, if something deprecated and we know it and the version hasn't changed, then we don't need to make the request ???
+	for _, module := range resp.Modules {
+		for _, modVersion := range module.Versions {
+			v, _ := version.NewVersion(modVersion.Version)
+			if latestMatch.Equal(v) && modVersion.Deprecation.Deprecated {
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  modVersion.Deprecation.Message,
+					Detail:   modVersion.Deprecation.ExternalLink,
+					Subject:  req.CallRange.Ptr(),
+				})
+				// mdTODO: do I need to do something with the submodules?
+				// how to find deprecations for submodules
+				for _, submodule := range modVersion.Submodules {
+					// doesn't work, need something to parse in the context of the parent module
+					submoduleSource, err := addrs.ParseSubmoduleSourceRegistry(modVersion.Root.Path, submodule.Path)
+					if err != nil {
+						// dont panic here, mdTODO fix this up
+						// maybe just log it and continue to the next iteration
+						log.Print("oops")
+					}
+					var registryModuleSource addrs.ModuleSourceRegistry
+					if source, ok := submoduleSource.(addrs.ModuleSourceRegistry); ok {
+						registryModuleSource = source
+					}
+
+					submoduleRegistryAddr := regsrc.ModuleFromRegistryPackageAddr(registryModuleSource.Package)
+					submoduleResp, err := reg.ModuleVersions(ctx, submoduleRegistryAddr)
+					if err != nil {
+						// dont panic here, mdTODO fix this up
+						// maybe just log it and continue to the next iteration
+						log.Print("oops")
+					}
+
+					injectMockDeprecations(submoduleResp)
+					for _, subModule := range submoduleResp.Modules {
+						for _, submodVersion := range subModule.Versions {
+							v, _ := version.NewVersion(submodVersion.Version)
+							// mdTODO: will the version of the submodule be the same as the root? looking at the registry suggests so. Though that doesn't make much sense.
+							if latestMatch.Equal(v) && modVersion.Deprecation.Deprecated {
+								diags = diags.Append(&hcl.Diagnostic{
+									Severity: hcl.DiagWarning,
+									Summary:  submodVersion.Deprecation.Message,
+									Detail:   submodVersion.Deprecation.ExternalLink,
+									Subject:  req.CallRange.Ptr(),
+								})
+							}
+						}
+					}
+				}
+				// once we have found the correct version we don't need to loop futher
+				break
+			}
+		}
 	}
 
 	// Report up to the caller that we're about to start downloading.
