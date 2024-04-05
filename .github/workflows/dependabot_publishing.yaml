@@ -5,10 +5,10 @@ name: Dependabot-Publish-Alerts
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 jobs:
   dependabot-alert-export:
     runs-on: ubuntu-latest
@@ -17,8 +17,8 @@ jobs:
         uses: robertcrockett/dependabot-alert-export@v2
         with:
           GITHUB_TOKEN: ${{secrets.PAT_TOKEN}}
-          org_name: "robertcrockett"
-          repo_name: "kubectl"
+          org_name: "woodrbe"
+          repo_name: "terraform"
           csv_path: data/vulnerability.csv
 
       - name: Upload Vulnerability report
